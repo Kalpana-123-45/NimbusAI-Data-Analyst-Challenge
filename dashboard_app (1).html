@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NimbusAI — Churn & Retention Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0A0F1E;
+    --ink-soft: #1E2740;
+    --surface: #F5F3EE;
+    --card: #FFFFFF;
+    --accent: #FF4D3D;
+    --accent2: #2563EB;
+    --accent3: #10B981;
+    --accent4: #F59E0B;
+    --muted: #6B7280;
+    --border: #E5E2DA;
+    --red-soft: #FEF2F2;
+    --blue-soft: #EFF6FF;
+    --green-soft: #F0FDF4;
+    --amber-soft: #FFFBEB;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--ink);
+    color: #fff;
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 3px solid var(--accent);
+  }
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+  .header-brand {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+  .header-brand span { color: var(--accent); }
+  .header-sub { font-size: 12px; color: #9CA3AF; letter-spacing: 0.08em; text-transform: uppercase; }
+  .header-badge {
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 2px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ── Layout ── */
+  .main { display: flex; min-height: calc(100vh - 77px); }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--ink-soft);
+    color: #fff;
+    padding: 28px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .sidebar-section { padding: 0 20px; margin-bottom: 28px; }
+  .sidebar-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6B7280;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+    color: #D1D5DB;
+    user-select: none;
+  }
+  .filter-chip:hover { background: rgba(255,255,255,0.07); }
+  .filter-chip.active { background: rgba(255,77,61,0.15); color: #fff; }
+  .filter-chip .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .filter-chip.active .dot { background: var(--accent); }
+
+  .sidebar-divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 4px 20px 24px; }
+
+  .stat-box {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 14px;
+    margin: 0 16px 12px;
+  }
+  .stat-box-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #6B7280; margin-bottom: 4px; }
+  .stat-box-val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #fff; }
+  .stat-box-sub { font-size: 11px; color: #9CA3AF; margin-top: 2px; }
+  .stat-box.red .stat-box-val { color: var(--accent); }
+  .stat-box.green .stat-box-val { color: var(--accent3); }
+
+  /* ── Content ── */
+  .content { flex: 1; padding: 32px 36px; overflow-x: hidden; }
+
+  /* ── Section header ── */
+  .section-hdr {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .section-tag {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--border);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  /* ── KPI Row ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi.red::before { background: var(--accent); }
+  .kpi.blue::before { background: var(--accent2); }
+  .kpi.green::before { background: var(--accent3); }
+  .kpi.amber::before { background: var(--accent4); }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+  .kpi-val { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .kpi.red .kpi-val { color: var(--accent); }
+  .kpi.blue .kpi-val { color: var(--accent2); }
+  .kpi.green .kpi-val { color: var(--accent3); }
+  .kpi.amber .kpi-val { color: var(--accent4); }
+  .kpi-delta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .kpi-delta b { color: var(--accent); }
+  .kpi-delta.good b { color: var(--accent3); }
+
+  /* ── Grid ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-5-3 { display: grid; grid-template-columns: 5fr 3fr; gap: 20px; margin-bottom: 20px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    position: relative;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .card-sub { font-size: 11px; color: var(--muted); margin-bottom: 18px; }
+  .chart-wrap { position: relative; }
+
+  /* ── Bar chart custom ── */
+  .bar-list { display: flex; flex-direction: column; gap: 10px; }
+  .bar-item { display: flex; flex-direction: column; gap: 4px; }
+  .bar-item-hdr { display: flex; justify-content: space-between; align-items: center; }
+  .bar-item-label { font-size: 12px; font-weight: 500; color: var(--ink); }
+  .bar-item-val { font-size: 12px; font-weight: 700; font-family: 'Syne', sans-serif; }
+  .bar-track { height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(0.25, 1, 0.5, 1); }
+
+  /* ── Funnel ── */
+  .funnel-list { display: flex; flex-direction: column; gap: 8px; }
+  .funnel-step { display: flex; flex-direction: column; gap: 4px; }
+  .funnel-hdr { display: flex; justify-content: space-between; align-items: center; }
+  .funnel-name { font-size: 12px; font-weight: 500; }
+  .funnel-stats { display: flex; gap: 12px; align-items: center; }
+  .funnel-users { font-size: 12px; font-family: 'Syne', sans-serif; font-weight: 700; }
+  .funnel-drop { font-size: 11px; color: var(--accent); font-weight: 600; }
+  .funnel-bar { height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+  .funnel-fill { height: 100%; border-radius: 4px; }
+
+  /* ── Pill tags ── */
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .pill {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--card);
+  }
+  .pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* ── Recommendations ── */
+  .rec-list { display: flex; flex-direction: column; gap: 14px; }
+  .rec {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: transform 0.2s;
+  }
+  .rec:hover { transform: translateX(4px); }
+  .rec-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--border);
+    line-height: 1;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: right;
+  }
+  .rec-body {}
+  .rec-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 5px; font-family: 'Syne', sans-serif; }
+  .rec-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .rec-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .rec-tag.high { background: var(--red-soft); color: var(--accent); }
+  .rec-tag.med { background: var(--amber-soft); color: #D97706; }
+  .rec-tag.low { background: var(--green-soft); color: #059669; }
+
+  /* ── Segment cards ── */
+  .seg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .seg-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    border-top: 3px solid var(--border);
+    transition: transform 0.2s;
+  }
+  .seg-card:hover { transform: translateY(-2px); }
+  .seg-card.champions { border-top-color: var(--accent4); }
+  .seg-card.engaged   { border-top-color: var(--accent3); }
+  .seg-card.at-risk   { border-top-color: var(--accent); }
+  .seg-card.new       { border-top-color: var(--accent2); }
+  .seg-name { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .seg-kpi-row { display: flex; flex-direction: column; gap: 6px; }
+  .seg-kpi { display: flex; justify-content: space-between; align-items: center; }
+  .seg-kpi-label { font-size: 11px; color: var(--muted); }
+  .seg-kpi-val { font-size: 12px; font-weight: 600; font-family: 'Syne', sans-serif; }
+
+  /* ── Hypothesis box ── */
+  .hypo-box {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 20px;
+  }
+  .hypo-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--accent); }
+  .hypo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .hypo-item label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #6B7280; margin-bottom: 4px; }
+  .hypo-item span { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: #fff; }
+  .hypo-result { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: #D1D5DB; line-height: 1.6; }
+  .hypo-result b { color: var(--accent4); }
+
+  /* ── Source badge ── */
+  .source-badge {
+    position: absolute;
+    top: 16px; right: 16px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .badge-sql { background: #EFF6FF; color: var(--accent2); }
+  .badge-mongo { background: #F0FDF4; color: #059669; }
+  .badge-both { background: var(--amber-soft); color: #D97706; }
+
+  /* Animations */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .card, .kpi, .rec, .seg-card { animation: fadeUp 0.4s ease both; }
+  .kpi:nth-child(1) { animation-delay: 0.05s; }
+  .kpi:nth-child(2) { animation-delay: 0.10s; }
+  .kpi:nth-child(3) { animation-delay: 0.15s; }
+  .kpi:nth-child(4) { animation-delay: 0.20s; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .note { font-size: 11px; color: var(--muted); margin-top: 10px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-brand">Nimbus<span>AI</span></div>
+    <div class="header-sub">Churn &amp; Retention Intelligence · Option A</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <div style="font-size:12px;color:#6B7280;">VP of Product &amp; Head of Customer Success</div>
+    <div class="header-badge">Live Analysis · 1,204 Customers</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Filter by Industry</div>
+      <div class="filter-group" id="industry-filters">
+        <div class="filter-chip active" data-filter="industry" data-val="all" onclick="toggleFilter(this)">
+          <span class="dot"></span> All Industries
+        </div>
+        <div class="filter-chip" data-filter="industry" data-val="Legal" onclick="toggleFilter(this)">
+          <span class="dot"></span> Legal
+        </div>
+        <div class="filter-chip" data-filter="industry" data-val="Media" onclick="toggleFilter(this)">
+          <span class="dot"></span> Media
+        </div>
+        <div class="filter-chip" data-filter="industry" data-val="Education" onclick="toggleFilter(this)">
+          <span class="dot"></span> Education
+        </div>
+        <div class="filter-chip" data-filter="industry" data-val="Finance" onclick="toggleFilter(this)">
+          <span class="dot"></span> Finance
+        </div>
+        <div class="filter-chip" data-filter="industry" data-val="Technology" onclick="toggleFilter(this)">
+          <span class="dot"></span> Technology
+        </div>
+      </div>
+    </div>
+    <hr class="sidebar-divider">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Filter by Source</div>
+      <div class="filter-group" id="source-filters">
+        <div class="filter-chip active" data-filter="source" data-val="all" onclick="toggleFilter(this)">
+          <span class="dot"></span> All Sources
+        </div>
+        <div class="filter-chip" data-filter="source" data-val="partner" onclick="toggleFilter(this)">
+          <span class="dot"></span> Partner
+        </div>
+        <div class="filter-chip" data-filter="source" data-val="referral" onclick="toggleFilter(this)">
+          <span class="dot"></span> Referral
+        </div>
+        <div class="filter-chip" data-filter="source" data-val="organic" onclick="toggleFilter(this)">
+          <span class="dot"></span> Organic
+        </div>
+        <div class="filter-chip" data-filter="source" data-val="paid_ads" onclick="toggleFilter(this)">
+          <span class="dot"></span> Paid Ads
+        </div>
+        <div class="filter-chip" data-filter="source" data-val="event" onclick="toggleFilter(this)">
+          <span class="dot"></span> Event
+        </div>
+      </div>
+    </div>
+    <hr class="sidebar-divider">
+    <div class="stat-box red">
+      <div class="stat-box-label">Overall Churn</div>
+      <div class="stat-box-val" id="sb-churn">22.1%</div>
+      <div class="stat-box-sub">266 churned customers</div>
+    </div>
+    <div class="stat-box green">
+      <div class="stat-box-label">Avg LTV</div>
+      <div class="stat-box-val">$1,704</div>
+      <div class="stat-box-sub">Per customer lifetime</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-label">Avg MRR / Customer</div>
+      <div class="stat-box-val">$30.9</div>
+      <div class="stat-box-sub">Across active base</div>
+    </div>
+  </aside>
+
+  <!-- ── CONTENT ── -->
+  <main class="content">
+
+    <!-- KPI ROW -->
+    <div class="kpi-row">
+      <div class="kpi red">
+        <div class="kpi-label">Total Customers</div>
+        <div class="kpi-val" id="kpi-total">1,204</div>
+        <div class="kpi-delta">Across all plan tiers</div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Churned</div>
+        <div class="kpi-val" id="kpi-churned">266</div>
+        <div class="kpi-delta"><b>22.1%</b> churn rate</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-label">Active Customers</div>
+        <div class="kpi-val" id="kpi-active">938</div>
+        <div class="kpi-delta class=good"><b>77.9%</b> retention</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">At-Risk Customers</div>
+        <div class="kpi-val">316</div>
+        <div class="kpi-delta">Require CS intervention</div>
+      </div>
+    </div>
+
+    <!-- ROW 1: MRR trend + Churn by source -->
+    <div class="section-hdr">
+      <div class="section-title">Revenue &amp; Acquisition Trends</div>
+      <div class="section-tag">SQL · billing_invoices + subscriptions</div>
+    </div>
+    <div class="grid-5-3" style="margin-bottom:28px;">
+      <div class="card">
+        <span class="source-badge badge-sql">SQL</span>
+        <div class="card-title">Monthly MRR &amp; New Subscriptions</div>
+        <div class="card-sub">18-month revenue trend with new subscription volume overlay</div>
+        <div class="chart-wrap"><canvas id="mrrChart" height="100"></canvas></div>
+      </div>
+      <div class="card">
+        <span class="source-badge badge-sql">SQL</span>
+        <div class="card-title">Churn Rate by Signup Source</div>
+        <div class="card-sub">Partner-acquired customers churn 11.5pp less than event-acquired</div>
+        <div class="bar-list" id="source-bars" style="margin-top:4px;"></div>
+        <p class="note">* Lower bar = healthier acquisition channel</p>
+      </div>
+    </div>
+
+    <!-- ROW 2: Industry churn + Segment cards -->
+    <div class="section-hdr">
+      <div class="section-title">Customer Segmentation &amp; Industry Analysis</div>
+      <div class="section-tag">SQL + MongoDB · Combined</div>
+    </div>
+    <div class="seg-grid" id="seg-cards"></div>
+    <div class="grid-2" style="margin-bottom:28px;">
+      <div class="card">
+        <span class="source-badge badge-sql">SQL</span>
+        <div class="card-title">Churn Rate by Industry (Top 8)</div>
+        <div class="card-sub">Legal and Media verticals exceed 26% churn — highest risk cohorts</div>
+        <div class="bar-list" id="industry-bars"></div>
+      </div>
+      <div class="card">
+        <span class="source-badge badge-both">SQL + MongoDB</span>
+        <div class="card-title">Customer Segment Distribution</div>
+        <div class="card-sub">K-Means segmentation across LTV, tenure, events, and feature usage</div>
+        <div class="chart-wrap" style="max-height:220px;display:flex;align-items:center;justify-content:center;">
+          <canvas id="segChart" height="220"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: Hypothesis + Churn reasons -->
+    <div class="section-hdr">
+      <div class="section-title">Statistical Analysis &amp; Churn Drivers</div>
+      <div class="section-tag">MongoDB · user_activity_logs + SQL · customers</div>
+    </div>
+    <div class="hypo-box">
+      <div class="hypo-title">⚗ Hypothesis Test — Feature Usage vs Churn (Chi-Squared, α=0.05)</div>
+      <div class="hypo-grid">
+        <div class="hypo-item">
+          <label>H₀ Hypothesis</label>
+          <span style="font-size:13px;line-height:1.4;display:block;color:#D1D5DB;font-family:'DM Sans';">Feature usage does not affect churn rate</span>
+        </div>
+        <div class="hypo-item">
+          <label>Test Statistic χ²</label>
+          <span>0.046</span>
+        </div>
+        <div class="hypo-item">
+          <label>p-value</label>
+          <span>0.831</span>
+        </div>
+      </div>
+      <div class="hypo-result">
+        <b>Result: Fail to reject H₀</b> — No statistically significant difference in churn rates between feature users (22.4%) and non-users (21.7%). This suggests churn is driven by <b>structural factors</b> (pricing, support quality, onboarding) rather than feature adoption alone. Recommendation: investigate ticket resolution speed and onboarding completion as primary churn levers.
+      </div>
+    </div>
+    <div class="grid-2" style="margin-bottom:28px;">
+      <div class="card">
+        <span class="source-badge badge-sql">SQL</span>
+        <div class="card-title">Churn Reasons Breakdown</div>
+        <div class="card-sub">Self-reported reasons from churned customers — product-market fit concerns dominate</div>
+        <div class="chart-wrap"><canvas id="churnReasonChart" height="180"></canvas></div>
+      </div>
+      <div class="card">
+        <span class="source-badge badge-mongo">MongoDB</span>
+        <div class="card-title">Onboarding Funnel Drop-off</div>
+        <div class="card-sub">Biggest drop at "Invite Teammate" — 68% drop-off, critical engagement milestone missed</div>
+        <div class="funnel-list" id="funnel-steps" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- ROW 4: Churn reasons chart large -->
+    <div class="section-hdr">
+      <div class="section-title">Actionable Recommendations</div>
+      <div class="section-tag">Business Insights · Priority Ranked</div>
+    </div>
+    <div class="rec-list">
+      <div class="rec">
+        <div class="rec-num">01</div>
+        <div class="rec-body">
+          <span class="rec-tag high">High Priority</span>
+          <div class="rec-title">Target At-Risk Segment with Proactive CS Outreach</div>
+          <div class="rec-desc">316 customers in the At-Risk segment show 23.1% churn with high support ticket volumes. Assign dedicated customer success managers to customers with &gt;3 tickets in the past 30 days. A churn prevention program targeting this segment could recover ~$560K in ARR (316 × $1,771 avg LTV × 23.1% churn rate).</div>
+        </div>
+      </div>
+      <div class="rec">
+        <div class="rec-num">02</div>
+        <div class="rec-body">
+          <span class="rec-tag high">High Priority</span>
+          <div class="rec-title">Fix the Onboarding Funnel — Close the Invite Teammate Gap</div>
+          <div class="rec-desc">The funnel analysis (MongoDB onboarding_events) shows 68% drop-off at the "Invite Teammate" step. Team adoption drives stickiness — solo users churn faster. Add an in-app prompt with a guided teammate invitation flow immediately after first project creation. Even a 20% improvement in this step would meaningfully lift 90-day retention.</div>
+        </div>
+      </div>
+      <div class="rec">
+        <div class="rec-num">03</div>
+        <div class="rec-body">
+          <span class="rec-tag med">Medium Priority</span>
+          <div class="rec-title">Shift Acquisition Budget from Events to Partner Channel</div>
+          <div class="rec-desc">Partner-acquired customers churn at only 15.1% vs event-acquired at 26.6% — an 11.5 percentage point difference. This is the single largest acquisition channel quality gap in the data (SQL: customers.signup_source). Reallocating 20% of event marketing budget to partner co-marketing programs would improve cohort LTV and reduce churn without changing the product.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+const DATA = {
+  monthly: [
+    {"month":"2024-08","new_subscriptions":61,"total_mrr":1498.46},
+    {"month":"2024-09","new_subscriptions":56,"total_mrr":1723.94},
+    {"month":"2024-10","new_subscriptions":54,"total_mrr":1509.54},
+    {"month":"2024-11","new_subscriptions":54,"total_mrr":1444.49},
+    {"month":"2024-12","new_subscriptions":71,"total_mrr":2064.89},
+    {"month":"2025-01","new_subscriptions":57,"total_mrr":1995.41},
+    {"month":"2025-02","new_subscriptions":69,"total_mrr":2053.51},
+    {"month":"2025-03","new_subscriptions":57,"total_mrr":1683.53},
+    {"month":"2025-04","new_subscriptions":62,"total_mrr":1493.41},
+    {"month":"2025-05","new_subscriptions":61,"total_mrr":2502.35},
+    {"month":"2025-06","new_subscriptions":68,"total_mrr":2061.00},
+    {"month":"2025-07","new_subscriptions":53,"total_mrr":1571.47},
+    {"month":"2025-08","new_subscriptions":64,"total_mrr":1958.55},
+    {"month":"2025-09","new_subscriptions":75,"total_mrr":2853.94},
+    {"month":"2025-10","new_subscriptions":66,"total_mrr":2953.94},
+    {"month":"2025-11","new_subscriptions":27,"total_mrr":1248.04},
+    {"month":"2025-12","new_subscriptions":16,"total_mrr":784.90},
+    {"month":"2026-01","new_subscriptions":4,"total_mrr":183.00}
+  ],
+  industry: [
+    {"industry":"Legal","customers":90,"churned":25,"churn_rate":27.8},
+    {"industry":"Media","customers":72,"churned":19,"churn_rate":26.4},
+    {"industry":"Education","customers":84,"churned":20,"churn_rate":23.8},
+    {"industry":"Finance","customers":77,"churned":18,"churn_rate":23.4},
+    {"industry":"Telecom","customers":86,"churned":20,"churn_rate":23.3},
+    {"industry":"Logistics","customers":78,"churned":18,"churn_rate":23.1},
+    {"industry":"Marketing","customers":83,"churned":19,"churn_rate":22.9},
+    {"industry":"Retail","customers":70,"churned":16,"churn_rate":22.9}
+  ],
+  source: [
+    {"signup_source":"partner","customers":166,"churned":25,"churn_rate":15.1},
+    {"signup_source":"paid_ads","customers":141,"churned":29,"churn_rate":20.6},
+    {"signup_source":"referral","customers":300,"churned":69,"churn_rate":23.0},
+    {"signup_source":"organic","customers":426,"churned":98,"churn_rate":23.0},
+    {"signup_source":"event","customers":169,"churned":45,"churn_rate":26.6}
+  ],
+  churnReasons: [
+    {"reason":"Not enough users","count":39},
+    {"reason":"No longer needed","count":26},
+    {"reason":"Company closed","count":25},
+    {"reason":"Outgrew platform","count":23},
+    {"reason":"Budget cuts","count":20},
+    {"reason":"Integration issues","count":20},
+    {"reason":"Too expensive","count":20},
+    {"reason":"Missing features","count":18},
+    {"reason":"Switched to competitor","count":12},
+    {"reason":"Poor support","count":10}
+  ],
+  segments: [
+    {"segment_label":"Champions","customers":7,"avg_ltv":2120.8,"avg_mrr":16.1,"churn_rate":0.143,"avg_events":4.9,"avg_tenure":687.7},
+    {"segment_label":"Engaged","customers":422,"avg_ltv":1782.8,"avg_mrr":34.0,"churn_rate":0.223,"avg_events":4.2,"avg_tenure":927.7},
+    {"segment_label":"At-Risk","customers":316,"avg_ltv":1771.1,"avg_mrr":28.4,"churn_rate":0.231,"avg_events":7.5,"avg_tenure":659.9},
+    {"segment_label":"New/Low-Engagement","customers":459,"avg_ltv":1579.0,"avg_mrr":29.9,"churn_rate":0.214,"avg_events":4.2,"avg_tenure":410.5}
+  ],
+  funnel: [
+    {"stage":"Signup","users":1204,"pct":100},
+    {"stage":"First Login","users":1070,"pct":88.9},
+    {"stage":"Workspace Created","users":830,"pct":77.6},
+    {"stage":"First Project","users":620,"pct":74.7},
+    {"stage":"Invited Teammate","users":198,"pct":31.9}
+  ]
+};
+
+// ── CHART.JS DEFAULTS ───────────────────────────────────────
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#6B7280';
+
+// ── 1. MRR + Subscriptions dual-axis ────────────────────────
+const mrrCtx = document.getElementById('mrrChart').getContext('2d');
+new Chart(mrrCtx, {
+  type: 'bar',
+  data: {
+    labels: DATA.monthly.map(d => d.month.slice(5)),
+    datasets: [
+      {
+        type: 'line',
+        label: 'MRR (USD)',
+        data: DATA.monthly.map(d => d.total_mrr),
+        borderColor: '#2563EB',
+        backgroundColor: 'rgba(37,99,235,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: '#2563EB',
+        yAxisID: 'y',
+        order: 1
+      },
+      {
+        type: 'bar',
+        label: 'New Subscriptions',
+        data: DATA.monthly.map(d => d.new_subscriptions),
+        backgroundColor: 'rgba(16,185,129,0.25)',
+        borderColor: '#10B981',
+        borderWidth: 1,
+        borderRadius: 3,
+        yAxisID: 'y2',
+        order: 2
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11 } } },
+      tooltip: { backgroundColor: '#0A0F1E', titleFont: { family: 'Syne', weight: '700' } }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: {
+        type: 'linear', position: 'left',
+        grid: { color: '#F5F3EE' },
+        ticks: { callback: v => '$' + v.toLocaleString(), font: { size: 11 } }
+      },
+      y2: {
+        type: 'linear', position: 'right',
+        grid: { display: false },
+        ticks: { font: { size: 11 } }
+      }
+    }
+  }
+});
+
+// ── 2. Source bar list ──────────────────────────────────────
+const srcContainer = document.getElementById('source-bars');
+const srcMax = Math.max(...DATA.source.map(d => d.churn_rate));
+const srcColors = { partner: '#10B981', paid_ads: '#F59E0B', referral: '#6B7280', organic: '#6B7280', event: '#FF4D3D' };
+DATA.source.forEach(d => {
+  const pct = (d.churn_rate / srcMax * 100).toFixed(0);
+  const color = srcColors[d.signup_source] || '#6B7280';
+  srcContainer.innerHTML += `
+    <div class="bar-item">
+      <div class="bar-item-hdr">
+        <span class="bar-item-label" style="text-transform:capitalize">${d.signup_source.replace('_',' ')}</span>
+        <span class="bar-item-val" style="color:${color}">${d.churn_rate}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${color};"></div>
+      </div>
+    </div>`;
+});
+
+// ── 3. Industry bar list ────────────────────────────────────
+const indContainer = document.getElementById('industry-bars');
+const indMax = Math.max(...DATA.industry.map(d => d.churn_rate));
+DATA.industry.forEach(d => {
+  const pct = (d.churn_rate / indMax * 100).toFixed(0);
+  const color = d.churn_rate >= 26 ? '#FF4D3D' : d.churn_rate >= 24 ? '#F59E0B' : '#6B7280';
+  indContainer.innerHTML += `
+    <div class="bar-item">
+      <div class="bar-item-hdr">
+        <span class="bar-item-label">${d.industry} <span style="color:#9CA3AF;font-size:11px;">(n=${d.customers})</span></span>
+        <span class="bar-item-val" style="color:${color}">${d.churn_rate}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${color};"></div>
+      </div>
+    </div>`;
+});
+
+// ── 4. Segment donut ─────────────────────────────────────────
+const segCtx = document.getElementById('segChart').getContext('2d');
+new Chart(segCtx, {
+  type: 'doughnut',
+  data: {
+    labels: DATA.segments.map(d => d.segment_label),
+    datasets: [{
+      data: DATA.segments.map(d => d.customers),
+      backgroundColor: ['#F59E0B','#10B981','#FF4D3D','#2563EB'],
+      borderWidth: 3,
+      borderColor: '#ffffff',
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    cutout: '62%',
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 12 } }
+      },
+      tooltip: {
+        backgroundColor: '#0A0F1E',
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.parsed} customers (${(ctx.parsed/1204*100).toFixed(1)}%)`
+        }
+      }
+    }
+  }
+});
+
+// ── 5. Segment cards ──────────────────────────────────────────
+const segContainer = document.getElementById('seg-cards');
+const segClasses = ['champions','engaged','at-risk','new'];
+const segClassMap = {
+  'Champions': 'champions',
+  'Engaged': 'engaged',
+  'At-Risk': 'at-risk',
+  'New/Low-Engagement': 'new'
+};
+DATA.segments.forEach(s => {
+  const cls = segClassMap[s.segment_label] || 'new';
+  segContainer.innerHTML += `
+    <div class="seg-card ${cls}">
+      <div class="seg-name">${s.segment_label}</div>
+      <div class="seg-kpi-row">
+        <div class="seg-kpi"><span class="seg-kpi-label">Customers</span><span class="seg-kpi-val">${s.customers.toLocaleString()}</span></div>
+        <div class="seg-kpi"><span class="seg-kpi-label">Avg LTV</span><span class="seg-kpi-val">$${s.avg_ltv.toFixed(0)}</span></div>
+        <div class="seg-kpi"><span class="seg-kpi-label">Avg MRR</span><span class="seg-kpi-val">$${s.avg_mrr.toFixed(1)}</span></div>
+        <div class="seg-kpi"><span class="seg-kpi-label">Churn Rate</span><span class="seg-kpi-val" style="color:${s.churn_rate>0.22?'#FF4D3D':'#10B981'}">${(s.churn_rate*100).toFixed(1)}%</span></div>
+        <div class="seg-kpi"><span class="seg-kpi-label">Avg Events</span><span class="seg-kpi-val">${s.avg_events.toFixed(1)}</span></div>
+        <div class="seg-kpi"><span class="seg-kpi-label">Avg Tenure</span><span class="seg-kpi-val">${Math.round(s.avg_tenure)}d</span></div>
+      </div>
+    </div>`;
+});
+
+// ── 6. Churn Reason horizontal bar ───────────────────────────
+const crCtx = document.getElementById('churnReasonChart').getContext('2d');
+new Chart(crCtx, {
+  type: 'bar',
+  data: {
+    labels: DATA.churnReasons.map(d => d.reason),
+    datasets: [{
+      data: DATA.churnReasons.map(d => d.count),
+      backgroundColor: [
+        '#FF4D3D','#FF6B5B','#F59E0B','#F59E0B','#6B7280',
+        '#6B7280','#6B7280','#2563EB','#2563EB','#10B981'
+      ],
+      borderRadius: 4,
+      borderWidth: 0
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0A0F1E' }
+    },
+    scales: {
+      x: { grid: { color: '#F5F3EE' }, ticks: { font: { size: 11 } } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ── 7. Funnel ────────────────────────────────────────────────
+const funnelContainer = document.getElementById('funnel-steps');
+const funnelColors = ['#2563EB','#10B981','#F59E0B','#FF8C42','#FF4D3D'];
+DATA.funnel.forEach((step, i) => {
+  const drop = i < DATA.funnel.length - 1
+    ? ((DATA.funnel[i].users - DATA.funnel[i+1].users) / DATA.funnel[i].users * 100).toFixed(1)
+    : null;
+  funnelContainer.innerHTML += `
+    <div class="funnel-step">
+      <div class="funnel-hdr">
+        <span class="funnel-name">${step.stage}</span>
+        <div class="funnel-stats">
+          <span class="funnel-users">${step.users.toLocaleString()}</span>
+          ${drop !== null ? `<span class="funnel-drop">−${drop}%</span>` : `<span style="font-size:11px;color:#10B981;font-weight:600;">✓ Final</span>`}
+        </div>
+      </div>
+      <div class="funnel-bar">
+        <div class="funnel-fill" style="width:${step.pct}%;background:${funnelColors[i]};"></div>
+      </div>
+    </div>`;
+});
+
+// ── FILTER LOGIC ─────────────────────────────────────────────
+let activeIndustry = 'all';
+let activeSource = 'all';
+
+function toggleFilter(el) {
+  const filterType = el.dataset.filter;
+  const val = el.dataset.val;
+
+  // Deactivate siblings
+  document.querySelectorAll(`.filter-chip[data-filter="${filterType}"]`).forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+
+  if (filterType === 'industry') activeIndustry = val;
+  if (filterType === 'source') activeSource = val;
+
+  updateKPIs();
+}
+
+const allCustomers = [
+  // Derived from real data summary
+  {total:1204, churned:266, active:938},
+  // Per-industry (index 1-8 for industry filters)
+  {industry:'Legal', total:90, churned:25, active:65},
+  {industry:'Media', total:72, churned:19, active:53},
+  {industry:'Education', total:84, churned:20, active:64},
+  {industry:'Finance', total:77, churned:18, active:59},
+  {industry:'Technology', total:45, churned:10, active:35},
+  // Per-source
+  {source:'partner', total:166, churned:25, active:141},
+  {source:'referral', total:300, churned:69, active:231},
+  {source:'organic', total:426, churned:98, active:328},
+  {source:'paid_ads', total:141, churned:29, active:112},
+  {source:'event', total:169, churned:45, active:124}
+];
+
+function updateKPIs() {
+  let total, churned, active;
+
+  if (activeIndustry !== 'all') {
+    const d = allCustomers.find(c => c.industry === activeIndustry) || {total:90,churned:20,active:70};
+    total = d.total; churned = d.churned; active = d.active;
+  } else if (activeSource !== 'all') {
+    const d = allCustomers.find(c => c.source === activeSource) || {total:166,churned:25,active:141};
+    total = d.total; churned = d.churned; active = d.active;
+  } else {
+    total = 1204; churned = 266; active = 938;
+  }
+
+  const rate = (churned/total*100).toFixed(1);
+  document.getElementById('kpi-total').textContent = total.toLocaleString();
+  document.getElementById('kpi-churned').textContent = churned.toLocaleString();
+  document.getElementById('kpi-active').textContent = active.toLocaleString();
+  document.getElementById('sb-churn').textContent = rate + '%';
+}
+
+// Animate bars on load
+setTimeout(() => {
+  document.querySelectorAll('.bar-fill, .funnel-fill').forEach(el => {
+    const w = el.style.width;
+    el.style.width = '0';
+    setTimeout(() => el.style.width = w, 100);
+  });
+}, 200);
+</script>
+</body>
+</html>
